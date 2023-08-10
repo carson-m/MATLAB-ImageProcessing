@@ -16,21 +16,26 @@ function [ACstream,DCstream,imgH,imgW] = JpegEncoder(inMat)
 
     % generate DC stream
     DCdiff = [2*DCarray(1),DCarray(1:end-1)] - DCarray; % diff
-    DCcat = ceil(log2(abs(DCdiff)+1)); %calculate DC category
+    DCcat = min(ceil(log2(abs(DCdiff)+1)),11); %calculate DC category
     DCstream = [];
     for i = 1:length(DCcat)
         lenHuffman = DCTAB(DCcat(i)+1,1);
-        binTemp = dec2bin(abs(DCdiff(i))) - '0';
-        if DCdiff(i)<0
-            binTemp = ~binTemp;
+        if DCcat(i) ~= 0
+            binTemp = dec2bin(abs(DCdiff(i))) - '0';
+            if DCdiff(i)<0
+                binTemp = ~binTemp;
+            end
+        else
+            binTemp = [];
         end
         DCstream = [DCstream,DCTAB(DCcat(i)+1,2:(1+lenHuffman)),binTemp];
     end
 
     % generate AC stream
     ACstream = [];
-    zeroCount = 0;
     for j = 1:length(DCarray)
+        
+        zeroCount = 0;
         for i = 1:63
             ACnum = ACarray(i,j);
             if ACnum ~= 0
