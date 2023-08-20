@@ -49,5 +49,8 @@ function ACarray = ACdecoder(ACstream,blockamount)
                 ACarray(decoded_amount,j) = Amplitude;
             end
         end
+        if decoded_amount == 63
+            currAC_idx = currAC_idx + 4; % if dosen't end with a zero, currAC_idx should be added by and additional len(EOB)
+        end
     end
 end
