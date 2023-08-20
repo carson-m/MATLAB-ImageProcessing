@@ -20,7 +20,7 @@ function ACarray = ACdecoder(ACstream,blockamount)
                 choose_idx = [];
                 for x = 1:size(candidates,1)
                     if isequal(prefix,candidates(x,4:4+len_append))
-                        choose_idx = [choose_idx,x]
+                        choose_idx = [choose_idx,x];
                     end
                 end
                 candidates = candidates(choose_idx,:);
