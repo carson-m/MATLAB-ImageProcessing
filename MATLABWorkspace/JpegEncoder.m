@@ -1,7 +1,7 @@
 function [ACstream,DCstream,imgH,imgW] = JpegEncoder(inMat)
     [imgH, imgW] = size(inMat,[1 2]);
     load('JpegCoeff.mat','ACTAB','DCTAB','QTAB');
-    dctMat = blockproc(double(inMat-128),[8 8],@(mat)(dct2(mat.data)));
+    dctMat = blockproc(double(inMat) - 128,[8 8],@(mat)(dct2(mat.data)));
     roundMat = blockproc(dctMat,[8 8],@(mat)(round(mat.data./QTAB)));
     zigzagMat = blockproc(roundMat,[8 8],@(mat)(zigzag88_scan(mat.data)));
     [h, w] = size(zigzagMat,[1 2]);

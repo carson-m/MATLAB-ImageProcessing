@@ -16,6 +16,6 @@ function Image = JpegDecoder(DCstream,ACstream,img_h,img_w)
     load('JpegCoeff.mat','QTAB');
     deRoundMat = blockproc(iZigzagMtx,[8 8],@(mat)(round(mat.data.*QTAB)));
     iDCTmtx = blockproc(deRoundMat,[8 8],@(mat)(idct2(mat.data)));
-    Image = uint8(iDCTmtx)+128;
+    Image = uint8(iDCTmtx + 128);
 end
 
