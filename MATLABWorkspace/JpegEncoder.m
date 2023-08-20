@@ -2,9 +2,9 @@ function [ACstream,DCstream,imgH,imgW] = JpegEncoder(inMat)
 % [AC码流 DC码流 图像高 图像宽] = JpegEncoder(灰度图像矩阵)
     [imgH, imgW] = size(inMat,[1 2]);
     load('JpegCoeff.mat','ACTAB','DCTAB','QTAB');
-    dctMat = blockproc(double(inMat) - 128,[8 8],@(mat)(dct2(mat.data)));
-    roundMat = blockproc(dctMat,[8 8],@(mat)(round(mat.data./QTAB)));
-    zigzagMat = blockproc(roundMat,[8 8],@(mat)(zigzag88_scan(mat.data)));
+    dctMat = blockproc(double(inMat) - 128,[8 8],@(mat)(dct2(mat.data))); % DCT变换
+    roundMat = blockproc(dctMat,[8 8],@(mat)(round(mat.data./QTAB))); % 量化
+    zigzagMat = blockproc(roundMat,[8 8],@(mat)(zigzag88_scan(mat.data))); % Zigzag扫描
     [h, w] = size(zigzagMat,[1 2]);
     rslt = [];
     for i = 1:h % row1(col1 2 3 ......) row2 ......
