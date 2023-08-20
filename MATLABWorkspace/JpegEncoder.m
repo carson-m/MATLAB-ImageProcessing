@@ -1,4 +1,5 @@
 function [ACstream,DCstream,imgH,imgW] = JpegEncoder(inMat)
+% [AC码流 DC码流 图像高 图像宽] = JpegEncoder(灰度图像矩阵)
     [imgH, imgW] = size(inMat,[1 2]);
     load('JpegCoeff.mat','ACTAB','DCTAB','QTAB');
     dctMat = blockproc(double(inMat) - 128,[8 8],@(mat)(dct2(mat.data)));
