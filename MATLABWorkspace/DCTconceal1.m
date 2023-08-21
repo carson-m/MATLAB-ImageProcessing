@@ -1,4 +1,4 @@
-function [ImageConceal,compressrate,PSNR] = DCTconceal1(srcImage,srcInfo)
+function [ACstream,DCstream,imgH,imgW] = DCTconceal1(srcImage,srcInfo)
 % 用信息位逐一替换所有量化后DCT系数最低位，再进行熵编码
     [imgH, imgW] = size(srcImage,[1 2]);
     load('JpegCoeff.mat','ACTAB','DCTAB','QTAB');
@@ -61,12 +61,5 @@ function [ImageConceal,compressrate,PSNR] = DCTconceal1(srcImage,srcInfo)
         end
         ACstream = [ACstream,[1,0,1,0]];
     end
-
-    ImageConceal = JpegDecoder(DCstream,ACstream,imgH,imgW);
-    
-    MSE = sum((ImageConceal-srcImage).^2,'all')/h/w;
-    PSNR = 10 * log10(255^2/MSE);
-
-    compressrate = 8*imgH*imgW/(length(ACstream)+length(DCstream));
 end
 
