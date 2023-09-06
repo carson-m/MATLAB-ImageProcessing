@@ -10,8 +10,8 @@ function ACarray = ACdecoder(ACstream,blockamount)
     for j = 1:blockamount
         decoded_amount = 0; % number of decoded numbers in a column
         while decoded_amount < 63
-            isZRL = 0; % flag, true if prefix equals ZRL
-            isEOB = 0; % flag, true if prefix equals EOB
+            %isZRL = 0; % flag, true if prefix equals ZRL
+            %isEOB = 0; % flag, true if prefix equals EOB
             len_append = 1; % since the shortest huffman code has a length of 2
             candidates = ACTAB;
             while size(candidates,1) > 1
@@ -50,7 +50,7 @@ function ACarray = ACdecoder(ACstream,blockamount)
             end
         end
         if decoded_amount == 63
-            currAC_idx = currAC_idx + 4; % if dosen't end with a zero, currAC_idx should be added by and additional len(EOB)
+            currAC_idx = currAC_idx + 4; % if dosen't end with a zero, currAC_idx should be added with an additional len(EOB)
         end
     end
 end
