@@ -72,14 +72,14 @@ for i = 1:size(margins,1) % refinement
             distTmp = upPlusDist; % 更新当前距离
             upNew = upNew-plusStep; % 更新上边框y值
         else % 如果向内缩更优
-            distTmp = upSubDist; % 更新当前距离
-            upNew = upNew+subStep; % 更新上边框y值
+            distTmp = upSubDist;
+            upNew = upNew+subStep;
         end
         upPlusDist = getFaceDist(testImg(max(upNew-plusStep,1):down,left:right,:),v,L);
         upSubDist = getFaceDist(testImg(min(upNew+subStep,down):down,left:right,:),v,L);
         minDistTmp = min([distTmp,upPlusDist,upSubDist]);
     end
-% 以下与对上边框的调整同理
+
     % down refinement
     downNew = down;
     distTmp = currDist;
@@ -108,8 +108,8 @@ for i = 1:size(margins,1) % refinement
     % left refinement
     leftNew = left;
     distTmp = currDist;
-    leftPlusDist = getFaceDist(testImg(up:down,max(leftNew-plusStep,1):right,:),v,L);
-    leftSubDist = getFaceDist(testImg(up:down,min(leftNew+subStep,right):right,:),v,L);
+    leftPlusDist = getFaceDist(testImg(up:down,max(leftNew,1):right,:),v,L);
+    leftSubDist = getFaceDist(testImg(up:down,min(leftNew,right):right,:),v,L);
     minDistTmp = min([distTmp,leftPlusDist,leftSubDist]);
     while minDistTmp ~= distTmp
         if leftPlusDist == minDistTmp
@@ -127,8 +127,8 @@ for i = 1:size(margins,1) % refinement
     % right refinement
     rightNew = right;
     distTmp = currDist;
-    rightPlusDist = getFaceDist(testImg(up:down,leftNew:min(right+plusStep,w),:),v,L);
-    rightSubDist = getFaceDist(testImg(up:down,left:max(right-subStep,leftNew),:),v,L);
+    rightPlusDist = getFaceDist(testImg(up:down,leftNew:min(right,w),:),v,L);
+    rightSubDist = getFaceDist(testImg(up:down,left:max(right,leftNew),:),v,L);
     minDistTmp = min([distTmp,rightPlusDist,rightSubDist]);
     while minDistTmp ~= distTmp
         if rightPlusDist == minDistTmp
