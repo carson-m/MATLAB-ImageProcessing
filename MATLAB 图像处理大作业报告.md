@@ -2,7 +2,9 @@
 
 马嘉成 2021011966 无18
 
-## 作业中涉及的所有文件的列表和简要说明（具体功能描述及变量说明见附件的具体文件）
+## 文件结构和重要文件的简要说明（具体功能描述及变量说明见附件的具体文件）
+
+MATLABWorkspace *MATLAB的工作目录，存放所有涉及到的mlx、m文件和用于训练模型或人脸检测的bmp文件*
 
 1. taskx_y_z.mlx 第x章，第y节，第z号任务
 2. ACdecoder.m JPEG交流部分解码器
@@ -36,6 +38,10 @@
 20. DFS.m 在FaceDetection模块中调用，用于对相邻的人脸块进行深度优先搜索，而后合并成完整人脸的范围
 
 21. FrameAdder.m 根据FaceDetection的检测结果，在对应的位置为人脸加框
+
+22. Faces 文件夹存放所有用于训练的bmp格式图片
+
+23. TestImages 文件夹存储用于测试人脸检测算法的bmp格式图片
 
 ## 解答&遇到的问题及解决方案
 
@@ -949,7 +955,7 @@ for x = 1:xBlockNum
 end
 ```
 
-现在已经大致获取了含有人脸的块信息，接下来需要将相邻块的信息汇总起来得到初步的人脸范围，为此我使用了DFS算法。
+现在已经大致获取了含有人脸的块信息，接下来需要将相邻块的信息汇总起来得到初步的人脸范围，为此我使用了DFS算法，从人脸的一块开始，搜寻周围相邻的人脸块，最终将连通区域找全。
 
 ```matlab
 global visited
@@ -967,12 +973,11 @@ for x = 1:xBlockNum
 end
 ```
 
-现在，我已经初步获得了人脸的范围，接下来就是微调边框位置，使得框住的部分距离最小。以调整上边框为例
+现在，我已经初步获得了人脸的范围，接下来就是微调边框位置，使得框住的部分距离最小。我选择了贪心算法，将上下左右边框微调后的距离算出来，看哪个最小就调哪个。
 
 ```matlab
-plusStep = 10; % 向外延申的步长
-subStep = 7; %向内缩的步长，与前者互质，可以多次调整达到最优
-
+plusStep = 8; % 向外延申的步长
+subStep = 9; %向内缩的步长，与前者互质，可以多次调整达到最优
 for i = 1:size(margins,1) % refinement
     up = margins(i,1); % 上边框y值
     down = margins(i,2); % 下边框y值
@@ -981,25 +986,100 @@ for i = 1:size(margins,1) % refinement
     currDist = getFaceDist(testImg(up:down,left:right,:),v,L); %初步得到的人脸距离
 
     % up refinement
-    upNew = up; % 临时存储试探性调整后的新上边框y值
     distTmp = currDist; % distTmp存储试探性微调后当前的最优距离
-    upPlusDist = getFaceDist(testImg(max(upNew-plusStep,1):down,left:right,:),v,L); % 向外延申一个步长后的新距离
-    upSubDist = getFaceDist(testImg(min(upNew+subStep,down):down,left:right,:),v,L); % 向内缩一个步长后的新距离
-    minDistTmp = min([distTmp,upPlusDist,upSubDist]); % 当前距离、延申后距离和收缩后距离的最小值
+
+    upPlusDist = getFaceDist(testImg(max(up-plusStep,1):down,left:right,:),v,L); % 向外延申一个步长后的新距离
+    upSubDist = getFaceDist(testImg(min(up+subStep,down):down,left:right,:),v,L); % 向内缩一个步长后的新距离
+    downPlusDist = getFaceDist(testImg(up:min(down+plusStep,h),left:right,:),v,L);
+    downSubDist = getFaceDist(testImg(up:max(down-subStep,up),left:right,:),v,L);
+    leftPlusDist = getFaceDist(testImg(up:down,max(left-plusStep,1):right,:),v,L);
+    leftSubDist = getFaceDist(testImg(up:down,min(left+subStep,right):right,:),v,L);
+    rightPlusDist = getFaceDist(testImg(up:down,left:min(right+plusStep,w),:),v,L);
+    rightSubDist = getFaceDist(testImg(up:down,left:max(right-subStep,left),:),v,L);
+    minDistTmp = min([distTmp,upPlusDist,upSubDist,downPlusDist,downSubDist,leftPlusDist,leftSubDist,rightPlusDist,rightSubDist]); % 当前距离、延申后距离和收缩后距离的最小值
     while minDistTmp ~= distTmp % 如果当前并非最优
         if upPlusDist == minDistTmp % 如果向外伸展更优
             distTmp = upPlusDist; % 更新当前距离
-            upNew = upNew-plusStep; % 更新上边框y值
-        else % 如果向内缩更优
+            up = up-plusStep; % 更新上边框y值
+        elseif upSubDist == minDistTmp% 如果向内缩更优
             distTmp = upSubDist; % 更新当前距离
-            upNew = upNew+subStep; % 更新上边框y值
+            up = up+subStep; % 更新上边框y值
+        elseif downPlusDist == minDistTmp
+            distTmp = downPlusDist;
+            down = down + plusStep;
+        elseif downSubDist == minDistTmp
+            distTmp = downSubDist;
+            down = down - subStep;
+        elseif leftPlusDist == minDistTmp
+            distTmp = leftPlusDist;
+            left = left - plusStep;
+        elseif leftSubDist == minDistTmp
+            distTmp = leftSubDist;
+            left = left + subStep;
+        elseif rightPlusDist == minDistTmp
+            distTmp = rightPlusDist;
+            left = left + plusStep;
+        else
+            distTmp = rightSubDist;
+            right = right - subStep;
         end
-        upPlusDist = getFaceDist(testImg(max(upNew-plusStep,1):down,left:right,:),v,L);
-        upSubDist = getFaceDist(testImg(min(upNew+subStep,down):down,left:right,:),v,L);
-        minDistTmp = min([distTmp,upPlusDist,upSubDist]);
+        upPlusDist = getFaceDist(testImg(max(up-plusStep,1):down,left:right,:),v,L); % 向外延申一个步长后的新距离
+        upSubDist = getFaceDist(testImg(min(up+subStep,down):down,left:right,:),v,L); % 向内缩一个步长后的新距离
+        downPlusDist = getFaceDist(testImg(up:min(down+plusStep,h),left:right,:),v,L);
+        downSubDist = getFaceDist(testImg(up:max(down-subStep,up),left:right,:),v,L);
+        leftPlusDist = getFaceDist(testImg(up:down,max(left-plusStep,1):right,:),v,L);
+        leftSubDist = getFaceDist(testImg(up:down,min(left+subStep,right):right,:),v,L);
+        rightPlusDist = getFaceDist(testImg(up:down,left:min(right+plusStep,w),:),v,L);
+        rightSubDist = getFaceDist(testImg(up:down,left:max(right-subStep,left),:),v,L);
+        minDistTmp = min([distTmp,upPlusDist,upSubDist,downPlusDist,downSubDist,leftPlusDist,leftSubDist,rightPlusDist,rightSubDist]); % 当前距离、延申后距离和收缩后距离的最小值
     end
-    
-    ...... 对down, left, right的调整 ......
+    margins(i,1) = up;
+    margins(i,2) = down;
+    margins(i,3) = left;
+    margins(i,4) = right;
 end
 ```
 
+使用此方法，取L=3，得到以下结果
+
+![FacialRecognitionL3](.\AttachedImages\FacialRecognitionL3.png)
+
+除了中间的人脸，其余人脸均被识别出来，实现了人脸检测的功能
+
+在不微调、L=3、L=4，L=5的时候得到了以下结果对比
+
+![FacialRecognitionComp](.\AttachedImages\FacialRecognitionComp-Cropped.png)
+
+观察到随着L的增大，有的人脸检测更加准确，范围更加合理，也有的人脸检测准确度下降。准确度变化的不稳定主要是由算法造成。因为我首先由初步的筛选得到人脸的大致范围，这相当于确定了一个初值。而后我在初始范围的基础上进行贪心算法。类似最速下降法可能会受到初值影响，这种贪心算法的具体操作也会受到初值影响，即使是不同的微调步长都会对结果产生影响，而且L选取的不同也会改变对距离的计算结果，影响算法的判断。
+
+至于右3人脸始终没有被识别出来，这是因为我设定了最小人脸大小的阈值。如果阈值太小，由于颜色相近，手等裸露的其他肢体部位也容易被识别为人脸。初筛得到的右3人脸的范围和手的大小相近，为了不引起误判，只能保持此阈值。至于为什么右3人脸的初筛范围较小，其一是因为他戴了口罩，遮挡住了一部分脸。另外，我发现这张照片的高光和阴影也对识别结果造成了较大影响。比如L=3时最终识别结果明显倾向于保留人脸高光的部分，而暗部经常被丢掉。这可能是由于暗部的颜色分布距离标准人脸比较远。注意到右3人脸大部分都在阴影内，所以初筛时被识别出来的块数就比较少，自然也就更容易被过滤掉。
+
+### Task 4.3.3
+
+- 顺时针旋转$90\degree$
+
+![FacialRecognitionR90](.\AttachedImages\FacialRecognitionR90.png)
+
+由于我初筛人脸是切割成方块，所以旋转$90\degree$对初筛时切割结果的影响很小。外加上旋转$90\degree$本身不改变每个方块内的颜色分布，所以对通过颜色识别人脸的方法的检测结果基本没有影响。最后，由于我的算法在微调边缘时将四边的调整结果同时考虑选取最优调整，所以上下左右边框是平等的，不会因为旋转而让算法偏爱调整某一个方向而忽略另一个。综上，理论上旋转$90\degree$对最终的检测结果也几乎没有影响。事实上最后的结果也和之前相近。
+
+- 横向拉伸为1.5倍
+
+![FacialRecognitionSW1.5](.\AttachedImages\FacialRecognitionSW1.5.png)
+
+横向拉伸后的效果整体提升。这主要是因为横向拉伸后变相地提升了横向的分辨率。原先分块时一张人脸可能只能横向被分为两块，拉伸后可能就能被分为四块。这样能更好地将所有含有人脸的块识别出来（取个极限，如果分辨率无穷大，假设仍能准确识别每一块是否包含人脸，那么就能完美地将整张人脸提取出来，而不会将周围的杂像素也包含进来，或是错误地滤除部分含有人脸的块）。这样就有了更好的初值，使后面的微调结果也得到改善。
+
+- 适当改变颜色
+
+![FacialRecognitionAdj](.\AttachedImages\FacialRecognitionAdj.png)
+
+之前就分析过识别结果受到高光部分和阴影部分的颜色分布差异影响。由于阴影部分的颜色分布距离标准人脸的颜色分布较远，贪心算法倾向于将更接近标准人脸的高光部分保留，而剔除暗部。改变颜色后阴影和高光的区别就更明显了，这也导致这一趋势被进一步放大。
+
+### Task 4.3.4
+
+如果可以重新选择训练样本标准，我认为我会更加注重人种、光照条件、人脸角度和表情的影响。当前人脸训练样本存在的一个较大的问题是大多数图片都是欧美白人。这样如果被测人种和训练人种不同，就更容易造成误判。另一个问题是较多的训练样本图片都是在光照较为均匀的环境下拍摄的，只有少部分存在较明显的明暗变化。这一点造成的问题是如果我用依靠这些图片训练出的模型去检测光照条件较差的图片中的人脸（就比如我选择的图片），就容易造成部分人脸区域被漏掉。针对以上两点，我会根据待检测的人种选择相同人种的训练样本，并确保涵盖较为丰富的光照条件，从光照充足均匀到光照较弱且不均。再者，我认为现有样本的两个优点是涵盖了较为丰富的人脸角度和表情。这两点显然也会改变不同颜色的占比。比如张着嘴时嘴里的黑色就会拉高黑色的占比，侧过脸时脸颊和腮部的肉色会更加占主要地位。这两点优点在新的选取标准中应当加以保留。最后，针对我的算法，我认为如果要优化初筛的结果，可以专门对某块完整的皮肤进行样本采集，训练一个专门服务于初筛的模型，这样也许可以改善对小块人脸的检测准确度。
+
+## 总结
+
+这次大作业比音乐合成大作业要更有挑战性，也让我学到了更多新东西。音乐合成更多是与一维的东西打交道，傅里叶变换等处理一维波形的方法也在信号与系统中学过了。而图像处理涉及到二维DCT变换、多个颜色通道和二维图像上的人脸识别等，这些无疑带来了更大的陌生感。同时，在完成这个大作业时，我也遇到了很多熟悉的东西。比如新学习的JPEG压缩原理涉及到了在数据与算法中学习的Huffman编码，我的人脸检测算法用到了之前学习过的DFS算法、贪心算法设计思想等。可以说做这次作业的过程就是在融汇旧知识的同时现学现卖新知识。
+
+最后感谢助教和老师对这门课程的付出。
