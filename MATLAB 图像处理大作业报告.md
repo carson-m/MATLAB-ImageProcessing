@@ -74,27 +74,27 @@ r = min(h_center, w_center);
 提取符合画圆要求的像素点(到中心距离与目标半径相比偏差不超2%)
 
 ```matlab
-dist = sqrt((H-h_center).^2 + (W-w_center).^2); % Calculate the distance from each pixel to the center
-idx = abs(dist-r)/r < 0.02; % Extract the pixels to be colored
+dist = sqrt((H-h_center).^2 + (W-w_center).^2); % 计算每点到圆心距离
+idx = abs(dist-r)/r < 0.02; % 用逻辑过滤出要着色的点
 ```
 
 利用提取到的坐标idx，对各通道进行修改，最终显示出来
 
 ```matlab
 % extract channels
-red_channel = hall_color(:, :, 1); % Red channel of the image
-green_channel = hall_color(:, :, 2); % Green channel of the image
-blue_channel = hall_color(:, :, 3); % Blue channel of the image
+red_channel = hall_color(:, :, 1); % 红色分量
+green_channel = hall_color(:, :, 2); % 绿色分量
+blue_channel = hall_color(:, :, 3); % 蓝色分量
 
 % draw circle
-red_channel(idx) = 255; % Set the circle region to red
-green_channel(idx) = 0; % Set the green channel to 0 for the circle region
-blue_channel(idx) = 0; % Set the blue channel to 0 for the circle region
+red_channel(idx) = 255;
+green_channel(idx) = 0;
+blue_channel(idx) = 0;
 
 % merge
-circ_hall = cat(3, red_channel, green_channel, blue_channel);
+circ_hall = cat(3, red_channel, green_channel, blue_channel); % 合并通道为一个(x,y,3)矩阵
 
-% Display the image with the red circle
+% 显示结果图像
 imshow(circ_hall);
 % imwrite(circ_hall,'circ_hall.bmp');
 ```
@@ -182,7 +182,7 @@ MSE = 1.3442e-28，两种方法的结果仅有数值计算的误差。
 % @Dmtx.m
 
 function D = Dmtx(N)
-% generates D matrix according to input dimension N
+% 根据输入的维度N给出D矩阵
 [D_temp_X, D_temp_Y] = meshgrid(1:2:(2*N-1),0:(N-1));
 D_temp = D_temp_X.*D_temp_Y*pi()/2/N;
 D = sqrt(2/N)*cos(D_temp);
@@ -278,6 +278,8 @@ freqz([-1 1], 1, 64);
 ### Task 2.4.7
 
 由于只用处理8x8矩阵得Zigzag遍历，所以直接将元素序号按照对8x8矩阵Zigzag扫描的顺序写成一向量形式即可
+
+(*注：这里受到了https://blog.csdn.net/qq_45847033/article/details/121311431中使用直接排列下标方法的启发，但代码为自己所写*)
 
 ```matlab
 function outMtx = zigzag88_scan(inMtx)
@@ -396,9 +398,9 @@ for j = 1:length(DCarray) % 从左向右逐列编码
     for i = 1:63 % 从上到下编码
         ACnum = ACarray(i,j); % 当前要处理的AC系数
         if ACnum ~= 0
-            ZRLcount = floor(zeroCount/16); % how many ZRLs should be added
-            Run = mod(zeroCount,16); %run
-            Size = ceil(log2(abs(ACnum)+1)); %size
+            ZRLcount = floor(zeroCount/16); % 记录应该加多少ZRL
+            Run = mod(zeroCount,16); % 游程
+            Size = ceil(log2(abs(ACnum)+1)); % 二进制位数
             if(ACnum > 0)
                 Amp = dec2bin(ACnum)-'0';
             else
@@ -455,33 +457,34 @@ JPEG解码的DC部分封装为`DCdecoder.m`
 function DCarray = DCdecoder(DCstream,blockamount)
     load("JpegCoeff.mat","DCTAB");
 
-    DCarray = zeros(1,blockamount); % init DCarray for i_zigzag
+    DCarray = zeros(1,blockamount); % 为i_zigzag初始化DCarray
 
     % decode DC
     currDC_idx = 1; % init pointer currDC_idx作为指针指示当前已经解码完的最后一位的下一位
     for j = 1:blockamount
-        len_append = 0; % number of bits after currDC_idx pointer 从当前指针又往后看了多少位
+        len_append = 0; % 从当前指针又往后看了多少位
         category_idx = 0:(size(DCTAB,1)-1); % 与candidates的行绑定，记录对应行的category
 ```
 每次开始解码一个新的DC系数时，candidates复制整个DCTAB，而后每加入一位，就根据当前前缀码排除candidates中不可能的选项，这样candidates的行数会不断减少。又因为Huffman编码是前缀码，只要编码不出错，一个前缀有且只有一个对应的选项是正确的，而且仅当在码流中取完整个Huffman码字才会得到唯一解，不会提前。所以当candidates的范围逐渐缩小最终到**唯一一行**时，搜索结束，该行对应的Huffman码就是码流中的Huffman码字，从而我们可以看category_idx的对应行得到category，从而进一步解码出magnitude。
 ```matlab
-        candidates = DCTAB; % possible matches 
-        while size(candidates,1) > 1 % how many possible matches remain? done when only one left
-            prefix = DCstream(currDC_idx:currDC_idx+len_append); % current prefix
-            choose_idx = []; % choose which rows will remain
-            filter = candidates(:,2:2+len_append) == prefix; % which of the candidates match the current prefix?
+        candidates = DCTAB; % 可能的正确结果
+        while size(candidates,1) > 1 % 还剩多少个候选的可能正确结果？由于huffman编码前缀码的特性，仅剩一个候选时候选就是结果
+            prefix = DCstream(currDC_idx:currDC_idx+len_append); % 当前已看到的前缀
+            choose_idx = []; % 记录应该留下的candidates的行序号，剔除不符合当前前缀的候选
+            filter = candidates(:,2:2+len_append) == prefix; % 筛出满足当前前缀的候选
             for curr_row = 1:size(filter,1)
                 if filter(curr_row,:)
                     choose_idx = [choose_idx,curr_row];
                 end
             end
-            candidates = candidates(choose_idx,:); % extract the rows that still match
+            candidates = candidates(choose_idx,:); % 仅保留可能正确的候选
             category_idx = category_idx(choose_idx);
             len_append = len_append + 1;
         end
-        % should have found one and only one match
+        % 到这里应该已经找到了唯一的结果
         DCcat = category_idx;
-        currDC_idx = currDC_idx + len_append; % no need to +1, since an additional 1 has been added in line 25
+        currDC_idx = currDC_idx + len_append;
+        
         if DCcat == 0
             DCarray(j) = 0; % 如果category为0，则码流后面没有记录magnitude
         else
@@ -1081,5 +1084,7 @@ end
 ## 总结
 
 这次大作业比音乐合成大作业要更有挑战性，也让我学到了更多新东西。音乐合成更多是与一维的东西打交道，傅里叶变换等处理一维波形的方法也在信号与系统中学过了。而图像处理涉及到二维DCT变换、多个颜色通道和二维图像上的人脸识别等，这些无疑带来了更大的陌生感。同时，在完成这个大作业时，我也遇到了很多熟悉的东西。比如新学习的JPEG压缩原理涉及到了在数据与算法中学习的Huffman编码，我的人脸检测算法用到了之前学习过的DFS算法、贪心算法设计思想等。可以说做这次作业的过程就是在融汇旧知识的同时现学现卖新知识。
+
+解释一下注释的问题，一开始写的时候由于代码习惯问题写了英文注释，后来意识到这样可能影响报告的易读性，故报告中涉及的重要注释均已改为中文，原程序文件中可能有遗漏，实在抱歉。
 
 最后感谢助教和老师对这门课程的付出。
